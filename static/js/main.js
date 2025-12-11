@@ -15,20 +15,32 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeUpload() {
     const uploadBox = document.getElementById('uploadBox');
     const fileInput = document.getElementById('fileInput');
+    const selectFileBtn = document.getElementById('selectFileBtn');
 
-    // 点击上传
-    uploadBox.addEventListener('click', function(e) {
-        // 阻止事件冒泡，避免重复触发
+    // 触发文件选择（兼容移动端）
+    function triggerFileInput(e) {
+        e.preventDefault();
         e.stopPropagation();
         fileInput.click();
-    });
+    }
+
+    // 点击上传区域
+    uploadBox.addEventListener('click', triggerFileInput);
+    
+    // 点击按钮（移动端友好）
+    if (selectFileBtn) {
+        selectFileBtn.addEventListener('click', triggerFileInput);
+        selectFileBtn.addEventListener('touchend', triggerFileInput);
+    }
 
     // 文件选择
     fileInput.addEventListener('change', function(e) {
-        handleFileSelect(e.target.files[0]);
+        if (e.target.files && e.target.files[0]) {
+            handleFileSelect(e.target.files[0]);
+        }
     });
 
-    // 拖拽上传
+    // 拖拽上传（桌面端）
     uploadBox.addEventListener('dragover', function(e) {
         e.preventDefault();
         uploadBox.classList.add('dragover');
@@ -47,6 +59,11 @@ function initializeUpload() {
         if (files.length > 0) {
             handleFileSelect(files[0]);
         }
+    });
+    
+    // 防止移动端长按弹出菜单
+    uploadBox.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
     });
 }
 
