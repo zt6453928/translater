@@ -103,30 +103,6 @@ class Config:
         '\u201E': '"',      # DOUBLE LOW-9 QUOTATION MARK
         '\u201F': '"',      # DOUBLE HIGH-REVERSED-9 QUOTATION MARK
         
-        # 上标数字（替换为普通数字）
-        '\u00B9': '1',      # SUPERSCRIPT ONE ¹
-        '\u00B2': '2',      # SUPERSCRIPT TWO ²
-        '\u00B3': '3',      # SUPERSCRIPT THREE ³
-        '\u2074': '4',      # SUPERSCRIPT FOUR ⁴
-        '\u2075': '5',      # SUPERSCRIPT FIVE ⁵
-        '\u2076': '6',      # SUPERSCRIPT SIX ⁶
-        '\u2077': '7',      # SUPERSCRIPT SEVEN ⁷
-        '\u2078': '8',      # SUPERSCRIPT EIGHT ⁸
-        '\u2079': '9',      # SUPERSCRIPT NINE ⁹
-        '\u2070': '0',      # SUPERSCRIPT ZERO ⁰
-        
-        # 下标数字（替换为普通数字）
-        '\u2080': '0',      # SUBSCRIPT ZERO ₀
-        '\u2081': '1',      # SUBSCRIPT ONE ₁
-        '\u2082': '2',      # SUBSCRIPT TWO ₂
-        '\u2083': '3',      # SUBSCRIPT THREE ₃
-        '\u2084': '4',      # SUBSCRIPT FOUR ₄
-        '\u2085': '5',      # SUBSCRIPT FIVE ₅
-        '\u2086': '6',      # SUBSCRIPT SIX ₆
-        '\u2087': '7',      # SUBSCRIPT SEVEN ₇
-        '\u2088': '8',      # SUBSCRIPT EIGHT ₈
-        '\u2089': '9',      # SUBSCRIPT NINE ₉
-        
         # 其他常见问题字符
         '\u00AD': '',       # SOFT HYPHEN
         '\u2022': '*',      # BULLET
