@@ -56,7 +56,7 @@ class Config:
     # PDF生成配置
     PDF_PAGE_SIZE = "A4"
     PDF_FONT_NAME = "Chinese"  # 中文字体名称
-    PDF_FONT_PATH = "/System/Library/Fonts/PingFang.ttc"  # macOS字体路径
+    PDF_FONT_PATH = None  # 留空，让app.py自动选择最佳字体（支持通过环境变量覆盖）
     PDF_FONT_SIZE = 12
     PDF_TITLE_SIZE = 18
     PDF_HEADING_SIZE = 16

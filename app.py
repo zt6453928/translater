@@ -1127,14 +1127,17 @@ def markdown_to_pdf(markdown_text, output_path):
     font_paths = []
 
     # 用户自定义路径优先（可通过环境变量 PDF_FONT_PATH 覆盖 Config.PDF_FONT_PATH）
-    custom_font_path = os.environ.get('PDF_FONT_PATH', Config.PDF_FONT_PATH)
+    custom_font_path = os.environ.get('PDF_FONT_PATH') or Config.PDF_FONT_PATH
     if custom_font_path:
         font_paths.append(custom_font_path)
+        print(f"自定义字体路径: {custom_font_path}", flush=True)
 
     # 项目内置/挂载字体目录（需要自行放置字体文件）
     if os.path.isdir(local_font_dir):
         for candidate in [
+            'Arial-Unicode.ttf',  # 本地开发用的符号链接
             'NotoSansCJKsc-Regular.otf', 'NotoSansCJKsc-Regular.ttf',
+            'NotoSansSC-Regular.otf', 'NotoSansSC-Regular.ttf',
             'SourceHanSansCN-Regular.otf', 'SourceHanSerifCN-Regular.otf',
             'DejaVuSans.ttf', 'DejaVuSansMono.ttf'
         ]:
