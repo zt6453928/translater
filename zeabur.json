@@ -11,27 +11,27 @@
     "FLASK_ENV": "production",
     "SECRET_KEY": {
       "type": "secret",
-      "description": "Flask应用密钥"
+      "description": "Flask应用密钥（必需，用于会话安全）"
     },
     "MINERU_API_TOKEN": {
       "type": "secret",
-      "description": "MinerU API Token（可选）"
+      "description": "MinerU PDF解析API Token（可选，有默认值）"
     },
     "DEEPLX_API_URL": {
       "type": "secret",
-      "description": "DeepLX API URL（可选）"
+      "description": "DeepLX翻译API URL（可选，有默认值）"
     },
     "AI_TRANSLATE_API_URL": {
       "type": "secret",
-      "description": "AI翻译API URL（可选）"
+      "description": "AI翻译API URL（可选，有默认值）"
     },
     "AI_TRANSLATE_API_KEY": {
       "type": "secret",
-      "description": "AI翻译API Key（可选）"
+      "description": "AI翻译API Key（可选，有默认值）"
     },
     "AI_TRANSLATE_MODEL": {
       "type": "secret",
-      "description": "AI模型名称（可选）"
+      "description": "AI模型名称（可选，有默认值）"
     }
   }
 }
