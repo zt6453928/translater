@@ -15,23 +15,23 @@
     },
     "MINERU_API_TOKEN": {
       "type": "secret",
-      "description": "MinerU PDF解析API Token（可选，有默认值）"
+      "description": "MinerU PDF解析API Token（可选，默认内置）"
     },
     "DEEPLX_API_URL": {
       "type": "secret",
-      "description": "DeepLX翻译API URL（可选，有默认值）"
+      "description": "DeepLX翻译API URL（可选，默认内置）"
     },
     "AI_TRANSLATE_API_URL": {
       "type": "secret",
-      "description": "AI翻译API URL（可选，有默认值）"
+      "description": "AI翻译API URL（可选，默认内置）"
     },
     "AI_TRANSLATE_API_KEY": {
       "type": "secret",
-      "description": "AI翻译API Key（可选，有默认值）"
+      "description": "AI翻译API Key（可选，默认内置）"
     },
     "AI_TRANSLATE_MODEL": {
       "type": "secret",
-      "description": "AI模型名称（可选，有默认值）"
+      "description": "AI模型名称（可选，默认内置）"
     }
   }
 }
