@@ -1233,19 +1233,30 @@ def markdown_to_pdf(markdown_text, output_path):
         t = _escape_html(s)
         if not fallback_font_name:
             return t
-        def is_supsub(cp: int) -> bool:
-            return (
-                cp in (0x00B2, 0x00B3, 0x00B9) or              # ¹²³
-                0x2070 <= cp <= 0x209F or                       # superscripts/subscripts block
-                0x2080 <= cp <= 0x208E                          # explicit subscript digits
-            )
+        def need_fallback(cp: int) -> bool:
+            # 上/下标
+            if cp in (0x00B2, 0x00B3, 0x00B9) or 0x2070 <= cp <= 0x209F or 0x2080 <= cp <= 0x208E:
+                return True
+            # 希腊字母
+            if 0x0370 <= cp <= 0x03FF:
+                return True
+            # 数学和技术符号常见区段
+            if 0x2100 <= cp <= 0x214F:
+                return True
+            if 0x2190 <= cp <= 0x21FF:
+                return True
+            if 0x2200 <= cp <= 0x22FF:
+                return True
+            if 0x25A0 <= cp <= 0x25FF:
+                return True
+            return False
         out = []
         open_tag = False
         for ch in t:
             cp = ord(ch)
-            if is_supsub(cp):
+            if need_fallback(cp):
                 if not open_tag:
-                    out.append(f'<font face="{fallback_font_name}">')
+                    out.append(f'<font name="{fallback_font_name}">')
                     open_tag = True
                 out.append(ch)
             else:
