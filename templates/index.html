@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>翻译</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>翻译</h1>
+        </header>
+
+        <main>
+            <!-- 上传区域 -->
+            <div class="upload-section">
+                <div class="upload-box" id="uploadBox">
+                    <div class="upload-content">
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <h2>选择或拖拽PDF文件</h2>
+                        <p>支持最大 50MB</p>
+                        <input type="file" id="fileInput" accept=".pdf" hidden>
+                        <button class="btn-select" onclick="document.getElementById('fileInput').click()">
+                            选择文件
+                        </button>
+                    </div>
+                </div>
+
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-card">
+                        <div class="file-icon">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="file-details">
+                            <div class="file-name" id="fileName"></div>
+                            <div class="file-size" id="fileSize"></div>
+                        </div>
+                        <button class="btn-remove" onclick="removeFile()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 参数配置 -->
+            <div class="config-section">
+                <div class="config-header" onclick="toggleConfig()">
+                    <h3>参数配置</h3>
+                    <svg class="toggle-icon" id="toggleIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </div>
+                <div class="config-content" id="configContent">
+                    <!-- 基础参数 -->
+                    <div class="config-group">
+                        <h4>解析配置</h4>
+                        <div class="config-grid">
+                            <div class="config-item">
+                                <label class="switch-label">
+                                    <span>OCR识别</span>
+                                    <label class="switch">
+                                        <input type="checkbox" id="is_ocr" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+
+                            <div class="config-item">
+                                <label class="switch-label">
+                                    <span>包含图片</span>
+                                    <label class="switch">
+                                        <input type="checkbox" id="include_image_base64" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+
+                            <div class="config-item">
+                                <label class="switch-label">
+                                    <span>公式识别</span>
+                                    <label class="switch">
+                                        <input type="checkbox" id="formula_enable" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+
+                            <div class="config-item">
+                                <label class="switch-label">
+                                    <span>表格识别</span>
+                                    <label class="switch">
+                                        <input type="checkbox" id="table_enable" checked>
+                                        <span class="slider"></span>
+                                    </label>
+                                </label>
+                            </div>
+
+                            <div class="config-item">
+                                <label class="input-label">
+                                    <span>处理页数</span>
+                                    <input type="number" id="end_pages" class="config-input" placeholder="留空处理全部" min="1">
+                                </label>
+                            </div>
+
+                            <div class="config-item">
+                                <label class="input-label">
+                                    <span>布局模型</span>
+                                    <select id="layout_model" class="config-select">
+                                        <option value="doclayout_yolo">DocLayout YOLO</option>
+                                        <option value="layoutlmv3">LayoutLMv3</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 翻译模式选择 -->
+                    <div class="config-group">
+                        <h4>翻译模式</h4>
+                        <div class="config-grid">
+                            <div class="config-item" style="grid-column: 1 / -1;">
+                                <label class="input-label">
+                                    <span>选择翻译模式</span>
+                                    <select id="translation_mode" class="config-select">
+                                        <option value="hybrid" selected>混合模式</option>
+                                    </select>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- API管理 -->
+                    <div class="config-group">
+                        <h4>API配置</h4>
+                        
+                        <!-- 解析API Key -->
+                        <div class="api-section">
+                            <div class="api-header">
+                                <span class="api-title">解析API Key <span style="font-size: 0.8em; color: var(--gray-400);">(可选，默认配置可用)</span></span>
+                                <button class="btn-add-api" onclick="addParseAPI()" title="添加自定义API Key">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    添加
+                                </button>
+                            </div>
+                            <div id="parseAPIList" class="api-list"></div>
+                        </div>
+
+                        <!-- 翻译API -->
+                        <div class="api-section">
+                            <div class="api-header">
+                                <span class="api-title">翻译AI API <span style="font-size: 0.8em; color: var(--gray-400);">(可选，默认配置可用)</span></span>
+                                <button class="btn-add-api" onclick="addTranslateAPI()" title="添加自定义AI API">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    添加
+                                </button>
+                            </div>
+                            <div id="translateAPIList" class="api-list"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 翻译按钮 -->
+            <div class="action-section">
+                <button class="btn-translate" id="translateBtn" onclick="translatePDF()" disabled>
+                    开始翻译
+                </button>
+            </div>
+
+            <!-- 进度显示 -->
+            <div class="progress-section" id="progressSection" style="display: none;">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-text" id="progressText">准备中...</div>
+            </div>
+
+            <!-- 结果显示 -->
+            <div class="result-section" id="resultSection" style="display: none;">
+                <div class="success-card">
+                    <svg class="success-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <h3>翻译完成</h3>
+                    <p>文件已自动下载</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
