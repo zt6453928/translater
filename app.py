@@ -120,53 +120,70 @@ def parse_pdf_with_mineru(filepath, options=None, api_token=None):
 def poll_mineru_task(task_id, api_token=None):
     """轮询MinerU任务状态"""
     from config import Config
-    
+
     # 使用传入的token或配置文件中的token
     token = api_token or Config.MINERU_API_TOKEN
-    
+
     # 动态构建状态查询URL（基于API的base URL）
     status_url = f"https://ai.gitee.com/v1/task/{task_id}"
-    
-    timeout = 30 * 60
-    retry_interval = 5
+
+    # 减少总超时时间到10分钟，更适合云环境
+    timeout = 10 * 60  # 10分钟
+    retry_interval = 3  # 3秒检查一次，减少阻塞时间
     attempts = 0
     max_attempts = int(timeout / retry_interval)
-    
+
     # 构建headers
     headers = {
         "Authorization": f"Bearer {token}"
     }
-    
+
+    print(f"开始轮询任务状态，总超时: {timeout//60}分钟...")
+
     while attempts < max_attempts:
         attempts += 1
-        print(f"检查任务状态 [{attempts}]...", end="")
-        response = requests.get(status_url, headers=headers, timeout=10)
-        result = response.json()
-        
-        if result.get("error"):
-            print('错误')
-            raise ValueError(f"{result['error']}: {result.get('message', '未知错误')}")
-        
-        status = result.get("status", "unknown")
-        print(status)
-        
-        if status == "success":
-            # 保存完整结果到文件用于调试
-            debug_file = f"/tmp/mineru_result_{task_id}.json"
-            try:
-                with open(debug_file, 'w', encoding='utf-8') as f:
-                    json.dump(result, f, indent=2, ensure_ascii=False)
-                print(f"  ✓ 结果已保存到: {debug_file}")
-            except Exception as e:
-                print(f"  ⚠️ 无法保存调试文件: {e}")
-            return result
-        elif status in ["failed", "cancelled"]:
-            raise ValueError(f"任务{status}")
-        else:
+
+        # 每30次检查（90秒）显示一次进度
+        if attempts % 30 == 1:
+            elapsed = (attempts - 1) * retry_interval
+            print(f"  📊 已等待 {elapsed//60}分{elapsed%60}秒，正在处理PDF...")
+
+        try:
+            response = requests.get(status_url, headers=headers, timeout=10)
+            result = response.json()
+
+            if result.get("error"):
+                print(f"  ❌ API错误: {result['error']}: {result.get('message', '未知错误')}")
+                raise ValueError(f"{result['error']}: {result.get('message', '未知错误')}")
+
+            status = result.get("status", "unknown")
+
+            if status == "success":
+                print("  ✅ 任务完成！")
+                # 保存完整结果到文件用于调试
+                debug_file = f"/tmp/mineru_result_{task_id}.json"
+                try:
+                    with open(debug_file, 'w', encoding='utf-8') as f:
+                        json.dump(result, f, indent=2, ensure_ascii=False)
+                    print(f"  📄 调试文件已保存: {debug_file}")
+                except Exception as e:
+                    print(f"  ⚠️ 无法保存调试文件: {e}")
+                return result
+            elif status in ["failed", "cancelled"]:
+                print(f"  ❌ 任务{status}")
+                raise ValueError(f"任务{status}")
+            else:
+                # 短暂休眠，避免过度占用资源
+                time.sleep(retry_interval)
+                continue
+
+        except requests.exceptions.RequestException as e:
+            print(f"  ⚠️ 网络请求失败，重试中: {e}")
             time.sleep(retry_interval)
             continue
-    
-    raise TimeoutError("任务超时")
+
+    print(f"  ⏰ 任务超时 (已等待 {timeout//60}分钟)")
+    raise TimeoutError(f"任务处理超时，已等待 {timeout//60} 分钟")
 
 
 def translate_with_ai(text, source_lang="EN", target_lang="ZH", api_url=None, api_key=None, model=None, max_retries=None):
