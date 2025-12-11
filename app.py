@@ -11,6 +11,7 @@ import shutil
 import re
 import base64
 from io import BytesIO
+from config import Config
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
