@@ -1194,6 +1194,68 @@ def markdown_to_pdf(markdown_text, output_path):
             except:
                 font_name = 'Helvetica'
                 print("⚠️ 无法加载Unicode字体，使用默认字体（可能无法显示特殊符号）")
+
+    # 尝试注册“符号/上、下标”备用字体，并在段落内对缺字字符进行按需切换
+    fallback_font_name = None
+    fallback_candidates = []
+    if os.path.isdir(local_font_dir):
+        fallback_candidates.extend([
+            os.path.join(local_font_dir, 'NotoSansMath-Regular.otf'),
+            os.path.join(local_font_dir, 'NotoSansMath-Regular.ttf'),
+            os.path.join(local_font_dir, 'DejaVuSans.ttf'),
+            os.path.join(local_font_dir, 'NotoSansSymbols2-Regular.ttf'),
+        ])
+    fallback_candidates.extend([
+        '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.otf',
+        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSansSymbols2-Regular.ttf',
+        '/Library/Fonts/DejaVuSans.ttf',
+    ])
+
+    for fp in fallback_candidates:
+        try:
+            if os.path.exists(fp):
+                pdfmetrics.registerFont(TTFont('UnicodeFallback', fp))
+                fallback_font_name = 'UnicodeFallback'
+                print(f"✓ 成功注册备用字体: {fp}")
+                break
+        except Exception as e:
+            print(f"⚠️ 无法注册备用字体 {fp}: {e}")
+            continue
+
+    # 包装一个工具：对文本中上/下标字符用备用字体渲染，避免缺字形
+    import html as _html
+    def _escape_html(s: str) -> str:
+        return s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+
+    def _apply_supsub_fallback(s: str) -> str:
+        t = _escape_html(s)
+        if not fallback_font_name:
+            return t
+        def is_supsub(cp: int) -> bool:
+            return (
+                cp in (0x00B2, 0x00B3, 0x00B9) or              # ¹²³
+                0x2070 <= cp <= 0x209F or                       # superscripts/subscripts block
+                0x2080 <= cp <= 0x208E                          # explicit subscript digits
+            )
+        out = []
+        open_tag = False
+        for ch in t:
+            cp = ord(ch)
+            if is_supsub(cp):
+                if not open_tag:
+                    out.append(f'<font face="{fallback_font_name}">')
+                    open_tag = True
+                out.append(ch)
+            else:
+                if open_tag:
+                    out.append('</font>')
+                    open_tag = False
+                out.append(ch)
+        if open_tag:
+            out.append('</font>')
+        return ''.join(out)
     
     # 创建中文样式
     chinese_style = ParagraphStyle(
@@ -1259,8 +1321,8 @@ def markdown_to_pdf(markdown_text, output_path):
             text = re.sub(r'\$([^\$]+)\$', replace_math, text)
             text = re.sub(r'\$\$([^\$]+)\$\$', replace_math, text)
             
-            # HTML转义特殊字符
-            text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # HTML转义 + 对上/下标字符应用备用字体
+            text = _apply_supsub_fallback(text)
             
             if level == 1:
                 p = Paragraph(text, chinese_title)
@@ -1350,8 +1412,8 @@ def markdown_to_pdf(markdown_text, output_path):
             # 处理行间公式 $$...$$（通常单独一行）
             text = re.sub(r'\$\$([^\$]+)\$\$', replace_math, text)
             
-            # HTML转义（在公式转换之后）
-            text = text.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            # HTML转义 + 对上/下标字符应用备用字体（在公式转换之后）
+            text = _apply_supsub_fallback(text)
             
             # 处理Markdown格式
             text = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', text)  # 粗体
