@@ -32,6 +32,20 @@ python app.py
 
 访问 `http://127.0.0.1:8000` 查看应用。
 
+### 生产运行（Gunicorn）
+
+长文档翻译/AI 修正比较耗时，建议在生产使用 Gunicorn 并加载仓库自带配置防止 30s 超时：
+
+```bash
+gunicorn -c gunicorn.conf.py app:app
+```
+
+如果平台不自动读取配置文件，可使用环境变量：
+
+```bash
+GUNICORN_CMD_ARGS="--config gunicorn.conf.py" gunicorn app:app
+```
+
 ## Zeabur部署
 
 ### 1. 连接GitHub仓库
@@ -58,7 +72,9 @@ AI_TRANSLATE_MODEL=your-model-name
 ### 3. 部署配置
 
 - **构建命令**: `pip install -r requirements.txt`
-- **启动命令**: `python app.py`
+- 推荐：**启动命令**: `gunicorn -c gunicorn.conf.py app:app`
+  - 如果无法修改命令，可设置环境变量：`GUNICORN_CMD_ARGS=--config gunicorn.conf.py`
+  - 或显式添加参数：`gunicorn app:app --timeout 600 --graceful-timeout 600 --workers 1 --threads 4 --worker-class gthread`
 - **端口**: `8000`
 
 ## 使用说明

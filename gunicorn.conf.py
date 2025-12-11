@@ -1,37 +1,34 @@
-# Gunicorn configuration for PDF Translator
+"""
+Gunicorn configuration for production (Zeabur/Heroku-like).
+
+- Increases request timeout to avoid worker being killed while
+  parsing/translating/AI-fixing long PDFs.
+-
+Usage: gunicorn -c gunicorn.conf.py app:app
+You can also set GUNICORN_CMD_ARGS="--config gunicorn.conf.py".
+"""
+
 import os
 
-# Server socket
-bind = "0.0.0.0:8000"
-backlog = 2048
+# Bind to the platform provided port or default 8000
+bind = f"0.0.0.0:{os.environ.get('PORT', '8000')}"
 
-# Worker processes
-workers = 2
-worker_class = "sync"
-worker_connections = 1000
-timeout = 300  # 5分钟超时，足够MinerU处理
-keepalive = 2
+# Worker model: threaded workers handle blocking I/O well
+worker_class = os.environ.get('GUNICORN_WORKER_CLASS', 'gthread')
 
-# Restart workers after this many requests, this can prevent memory leaks
-max_requests = 1000
-max_requests_jitter = 50
+# Concurrency (be conservative for small containers)
+workers = int(os.environ.get('GUNICORN_WORKERS', '1'))
+threads = int(os.environ.get('GUNICORN_THREADS', '4'))
 
-# Logging
-loglevel = "info"
-accesslog = "-"
-errorlog = "-"
+# Avoid 30s default timeout — long translation jobs need more time
+timeout = int(os.environ.get('GUNICORN_TIMEOUT', '600'))
+graceful_timeout = int(os.environ.get('GUNICORN_GRACEFUL_TIMEOUT', '600'))
 
-# Process naming
-proc_name = "pdf_translator"
+# Keep the connection alive a bit longer for slow networks
+keepalive = int(os.environ.get('GUNICORN_KEEPALIVE', '75'))
 
-# Server mechanics
-preload_app = True
-pidfile = "/tmp/gunicorn.pid"
-# user = "nobody"  # 注释掉以避免容器环境中的权限问题
-# group = "nogroup"  # 注释掉以避免容器环境中的权限问题
-tmp_upload_dir = None
-
-# SSL (if needed)
-# keyfile = "/path/to/ssl/private.key"
-# certfile = "/path/to/ssl/certificate.crt"
+# Logging to stdout/stderr so platform collects logs
+accesslog = '-'
+errorlog = '-'
+loglevel = os.environ.get('GUNICORN_LOGLEVEL', 'info')
 
