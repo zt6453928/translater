@@ -1256,7 +1256,7 @@ def markdown_to_pdf(markdown_text, output_path):
             cp = ord(ch)
             if need_fallback(cp):
                 if not open_tag:
-                    out.append(f'<font name="{fallback_font_name}">')
+                    out.append(f'<font face="{fallback_font_name}">')
                     open_tag = True
                 out.append(ch)
             else:
