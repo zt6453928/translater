@@ -15,10 +15,10 @@ from io import BytesIO
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
 
-# 创建安全的上传目录
+# 创建安全的上传目录 (使用 /tmp 目录，因为 /app 在容器中是只读的)
 import os
-UPLOAD_DIR = os.path.join(os.getcwd(), 'uploads')
-DEBUG_DIR = os.path.join(os.getcwd(), 'debug_logs')
+UPLOAD_DIR = '/tmp/uploads'
+DEBUG_DIR = '/tmp/debug_logs'
 
 # 确保目录存在并设置权限
 for directory in [UPLOAD_DIR, DEBUG_DIR]:
@@ -174,7 +174,7 @@ def poll_mineru_task(task_id, api_token=None):
             if status == "success":
                 print("  ✅ 任务完成！")
                 # 保存完整结果到文件用于调试
-                debug_dir = os.path.join(os.getcwd(), 'debug_logs')
+                debug_dir = '/tmp/debug_logs'
                 if not os.path.exists(debug_dir):
                     os.makedirs(debug_dir, exist_ok=True)
                 debug_file = os.path.join(debug_dir, f"mineru_result_{task_id}.json")
