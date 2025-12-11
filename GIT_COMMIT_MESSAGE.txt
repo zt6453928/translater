@@ -1,0 +1,73 @@
+添加字体配置和测试工具以解决 Zeabur PDF 中文乱码问题
+
+## 问题背景
+
+Zeabur 基础镜像缺少支持中文和数学符号的字体，导致 PDF 生成时显示黑色问号/菱形乱码。
+
+## 解决方案
+
+### 1. 字体加载逻辑（已实现）
+- app.py 1121-1189 行实现完整的字体加载策略
+- 优先级：环境变量 → 项目字体 → 系统字体 → 内置字体
+- 支持多种字体格式：OTF、TTF、TTC
+
+### 2. 本地开发配置
+- 创建 fonts/Arial-Unicode.ttf 符号链接指向系统字体
+- 支持完整中文字符和数学符号
+- 字体测试通过，生成 test_font_output.pdf 验证
+
+### 3. 文档和工具
+新增文件：
+- fonts/README.md（更新）：字体配置快速指南
+- fonts/FONT_SETUP.md：详细配置步骤和故障排除
+- fonts/QUICK_START.md：快速开始指南
+- fonts/download_font.sh：自动下载脚本
+- test_font.py：字体加载测试工具
+- FONT_CONFIGURATION_SUMMARY.md：完整配置总结
+
+### 4. 部署配置
+- zeabur.json 添加 PDF_FONT_PATH 环境变量支持
+- .gitignore 更新允许提交字体文件
+- config.py 已配置字体路径默认值
+
+## Zeabur 部署步骤
+
+1. 手动下载 Noto Sans CJK SC 字体
+   https://fonts.google.com/noto/specimen/Noto+Sans+SC
+
+2. 放置到 fonts/ 目录并提交
+
+3. 在 Zeabur 设置环境变量：
+   PDF_FONT_PATH=/app/fonts/NotoSansCJKsc-Regular.otf
+
+## 测试结果
+
+✅ 字体加载成功: Arial Unicode (22.20 MB)
+✅ 测试 PDF 生成: test_font_output.pdf (218.97 KB)
+✅ 中文字符显示: 正常
+✅ 数学符号显示: 正常（α β γ δ ∫ ∑ √ 等）
+✅ 希腊字母显示: 正常
+
+## 受影响文件
+
+新增：
+- fonts/Arial-Unicode.ttf（符号链接）
+- fonts/FONT_SETUP.md
+- fonts/QUICK_START.md
+- fonts/download_font.sh
+- test_font.py
+- test_font_output.pdf
+- FONT_CONFIGURATION_SUMMARY.md
+- GIT_COMMIT_MESSAGE.txt
+
+修改：
+- .gitignore（添加测试输出忽略）
+- fonts/README.md（更新详细说明）
+- zeabur.json（已在之前提交）
+- app.py（已在之前提交）
+
+## 注意事项
+
+- 本地开发已完全配置，无需额外操作
+- Zeabur 部署需要手动下载字体（由于网络 SSL 问题）
+- 字体文件约 16MB，建议使用 Noto Sans CJK SC

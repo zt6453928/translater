@@ -54,11 +54,16 @@ task_*.json
 debug_logs/
 mineru_result_*.json
 
-# Fonts (uncomment if you want to ignore font files)
-# fonts/*.ttf
-# fonts/*.otf
-# fonts/*.ttc
+# Fonts - keep font files and documentation
+# fonts/*.ttf     # 不再忽略字体文件，Zeabur 部署需要
+# fonts/*.otf     # 不再忽略字体文件，Zeabur 部署需要
+# fonts/*.ttc     # 不再忽略字体文件，Zeabur 部署需要
 # !fonts/README.md
+
+# Test output
+test_font_output.pdf
+
+
 
 
 
