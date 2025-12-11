@@ -1199,18 +1199,19 @@ def markdown_to_pdf(markdown_text, output_path):
     fallback_font_name = None
     fallback_candidates = []
     if os.path.isdir(local_font_dir):
+        # 优先使用 DejaVuSans（对上/下标与希腊字母覆盖更好），再退到 NotoSansMath
         fallback_candidates.extend([
-            os.path.join(local_font_dir, 'NotoSansMath-Regular.otf'),
-            os.path.join(local_font_dir, 'NotoSansMath-Regular.ttf'),
             os.path.join(local_font_dir, 'DejaVuSans.ttf'),
+            os.path.join(local_font_dir, 'NotoSansMath-Regular.ttf'),
+            os.path.join(local_font_dir, 'NotoSansMath-Regular.otf'),
             os.path.join(local_font_dir, 'NotoSansSymbols2-Regular.ttf'),
         ])
     fallback_candidates.extend([
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
-        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.otf',
-        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.ttf',
-        '/usr/share/fonts/opentype/noto/NotoSansSymbols2-Regular.ttf',
         '/Library/Fonts/DejaVuSans.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSansMath-Regular.otf',
+        '/usr/share/fonts/opentype/noto/NotoSansSymbols2-Regular.ttf',
     ])
 
     for fp in fallback_candidates:
