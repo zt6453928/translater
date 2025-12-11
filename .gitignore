@@ -54,6 +54,12 @@ task_*.json
 debug_logs/
 mineru_result_*.json
 
+# Fonts (uncomment if you want to ignore font files)
+# fonts/*.ttf
+# fonts/*.otf
+# fonts/*.ttc
+# !fonts/README.md
+
 
 
 

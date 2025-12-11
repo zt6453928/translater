@@ -1120,11 +1120,29 @@ def markdown_to_pdf(markdown_text, output_path):
     
     # 注册字体 - 优先使用支持完整 Unicode 的字体
     font_registered = False
-    
-    # 优先级排序：支持 Unicode 数学符号的字体优先
-    font_paths = [
+
+    # 允许通过环境/配置或项目内 fonts 目录挂载字体，以便在精简容器（如 Zeabur）中避免乱码
+    local_font_dir = os.path.join(os.path.dirname(__file__), 'fonts')
+    font_paths = []
+
+    # 用户自定义路径优先（可通过环境变量 PDF_FONT_PATH 覆盖 Config.PDF_FONT_PATH）
+    custom_font_path = os.environ.get('PDF_FONT_PATH', Config.PDF_FONT_PATH)
+    if custom_font_path:
+        font_paths.append(custom_font_path)
+
+    # 项目内置/挂载字体目录（需要自行放置字体文件）
+    if os.path.isdir(local_font_dir):
+        for candidate in [
+            'NotoSansCJKsc-Regular.otf', 'NotoSansCJKsc-Regular.ttf',
+            'SourceHanSansCN-Regular.otf', 'SourceHanSerifCN-Regular.otf',
+            'DejaVuSans.ttf', 'DejaVuSansMono.ttf'
+        ]:
+            font_paths.append(os.path.join(local_font_dir, candidate))
+
+    # 系统常见字体 - 优先级：覆盖 Unicode 的字体优先
+    font_paths.extend([
         # macOS 字体 - Arial Unicode MS 支持最完整的 Unicode
-        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',  
+        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
         '/Library/Fonts/Arial Unicode.ttf',
         # macOS 其他支持广泛 Unicode 的字体
         '/System/Library/Fonts/Apple Symbols.ttf',
@@ -1136,13 +1154,15 @@ def markdown_to_pdf(markdown_text, output_path):
         '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
         '/usr/share/fonts/truetype/liberation/LiberationSans-Regular.ttf',
         '/usr/share/fonts/truetype/droid/DroidSansFallbackFull.ttf',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJKsc-Regular.otf',
         # Windows 字体
         'C:\\Windows\\Fonts\\Arial.ttf',
         'C:\\Windows\\Fonts\\arialuni.ttf',
         'C:\\Windows\\Fonts\\simhei.ttf',
         'C:\\Windows\\Fonts\\simsun.ttc',
-    ]
-    
+    ])
+
     for font_path in font_paths:
         try:
             if os.path.exists(font_path):
