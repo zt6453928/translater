@@ -17,20 +17,37 @@ function initializeUpload() {
     const fileInput = document.getElementById('fileInput');
     const selectFileBtn = document.getElementById('selectFileBtn');
 
-    // 触发文件选择（兼容移动端）
+    // 触发文件选择
     function triggerFileInput(e) {
-        e.preventDefault();
-        e.stopPropagation();
+        // 只阻止冒泡，不阻止默认行为
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
         fileInput.click();
     }
 
-    // 点击上传区域
-    uploadBox.addEventListener('click', triggerFileInput);
+    // 点击上传区域（但不包括按钮）
+    uploadBox.addEventListener('click', function(e) {
+        // 如果点击的是按钮，不处理（让按钮自己处理）
+        if (e.target.closest('.btn-select')) {
+            return;
+        }
+        triggerFileInput(e);
+    });
     
-    // 点击按钮（移动端友好）
+    // 点击按钮（桌面端和移动端）
     if (selectFileBtn) {
-        selectFileBtn.addEventListener('click', triggerFileInput);
-        selectFileBtn.addEventListener('touchend', triggerFileInput);
+        selectFileBtn.addEventListener('click', function(e) {
+            e.stopPropagation(); // 防止触发 uploadBox 的点击事件
+            fileInput.click();
+        });
+        
+        // 移动端触摸支持
+        selectFileBtn.addEventListener('touchend', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            fileInput.click();
+        });
     }
 
     // 文件选择
