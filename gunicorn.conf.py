@@ -27,8 +27,8 @@ proc_name = "pdf_translator"
 # Server mechanics
 preload_app = True
 pidfile = "/tmp/gunicorn.pid"
-user = "nobody"
-group = "nogroup"
+# user = "nobody"  # 注释掉以避免容器环境中的权限问题
+# group = "nogroup"  # 注释掉以避免容器环境中的权限问题
 tmp_upload_dir = None
 
 # SSL (if needed)
