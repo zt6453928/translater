@@ -14,7 +14,20 @@ from io import BytesIO
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
-app.config['UPLOAD_FOLDER'] = tempfile.mkdtemp()
+
+# 创建安全的上传目录
+import os
+UPLOAD_DIR = os.path.join(os.getcwd(), 'uploads')
+DEBUG_DIR = os.path.join(os.getcwd(), 'debug_logs')
+
+# 确保目录存在并设置权限
+for directory in [UPLOAD_DIR, DEBUG_DIR]:
+    if not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+        # 设置目录权限为755 (rwxr-xr-x)
+        os.chmod(directory, 0o755)
+
+app.config['UPLOAD_FOLDER'] = UPLOAD_DIR
 
 # 禁用Flask的默认安全头
 app.config['SESSION_COOKIE_SECURE'] = False
@@ -161,7 +174,10 @@ def poll_mineru_task(task_id, api_token=None):
             if status == "success":
                 print("  ✅ 任务完成！")
                 # 保存完整结果到文件用于调试
-                debug_file = f"/tmp/mineru_result_{task_id}.json"
+                debug_dir = os.path.join(os.getcwd(), 'debug_logs')
+                if not os.path.exists(debug_dir):
+                    os.makedirs(debug_dir, exist_ok=True)
+                debug_file = os.path.join(debug_dir, f"mineru_result_{task_id}.json")
                 try:
                     with open(debug_file, 'w', encoding='utf-8') as f:
                         json.dump(result, f, indent=2, ensure_ascii=False)

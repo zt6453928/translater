@@ -50,6 +50,10 @@ tmp/
 uploads/
 task_*.json
 
+# Debug logs
+debug_logs/
+mineru_result_*.json
+
 
 
 
