@@ -1133,12 +1133,13 @@ def markdown_to_pdf(markdown_text, output_path):
         print(f"自定义字体路径: {custom_font_path}", flush=True)
 
     # 项目内置/挂载字体目录（需要自行放置字体文件）
+    # 注意：ReportLab 只支持 TrueType 格式(.ttf)，不支持 PostScript outlines (.otf CFF)
     if os.path.isdir(local_font_dir):
         for candidate in [
             'Arial-Unicode.ttf',  # 本地开发用的符号链接
-            'NotoSansCJKsc-Regular.otf', 'NotoSansCJKsc-Regular.ttf',
-            'NotoSansSC-Regular.otf', 'NotoSansSC-Regular.ttf',
-            'SourceHanSansCN-Regular.otf', 'SourceHanSerifCN-Regular.otf',
+            'NotoSansCJKsc-Regular.ttf',  # 完整版 TrueType (推荐)
+            'NotoSansSC-Regular.ttf',  # Google Fonts 版本 TrueType
+            'SourceHanSansCN-Regular.ttf',  # 思源黑体 TrueType
             'DejaVuSans.ttf', 'DejaVuSansMono.ttf'
         ]:
             font_paths.append(os.path.join(local_font_dir, candidate))
