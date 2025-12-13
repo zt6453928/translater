@@ -396,64 +396,97 @@ async function translatePDF() {
             }
         }
 
-        // 进度模拟
-        let progress = 0;
-        const progressInterval = setInterval(() => {
-            if (progress < 90) {
-                progress += Math.random() * 10;
-                if (progress > 90) progress = 90;
-                progressFill.style.width = progress + '%';
-                
-                if (progress < 30) {
-                    progressText.textContent = '上传中...';
-                } else if (progress < 60) {
-                    progressText.textContent = '解析中...';
-                } else {
-                    progressText.textContent = '翻译中...';
-                }
-            }
-        }, 500);
+        // 提交任务
+        progressText.textContent = '提交任务中...';
+        progressFill.style.width = '5%';
 
-        // 发送请求
-        const response = await fetch('/translate', {
+        const submitResponse = await fetch('/translate/submit', {
             method: 'POST',
             body: formData
         });
 
-        clearInterval(progressInterval);
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.error || '翻译失败');
+        if (!submitResponse.ok) {
+            const error = await submitResponse.json();
+            throw new Error(error.error || '提交任务失败');
         }
 
-        progressFill.style.width = '100%';
-        progressText.textContent = '生成PDF...';
+        const submitResult = await submitResponse.json();
+        const taskId = submitResult.task_id;
+        console.log('任务已提交，ID:', taskId);
 
-        // 下载文件
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `translated_${selectedFile.name}`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        // 轮询任务状态
+        let pollCount = 0;
+        const maxPolls = 1800; // 最多轮询30分钟（每秒一次）
 
-        // 显示成功
-        progressSection.style.display = 'none';
-        resultSection.style.display = 'block';
+        while (pollCount < maxPolls) {
+            await new Promise(resolve => setTimeout(resolve, 1000)); // 等待1秒
+            pollCount++;
 
-        setTimeout(() => {
-            translateBtn.disabled = false;
-            translateBtn.textContent = '重新翻译';
-        }, 1000);
+            try {
+                const statusResponse = await fetch(`/translate/status/${taskId}`);
+
+                if (!statusResponse.ok) {
+                    const error = await statusResponse.json();
+                    throw new Error(error.error || '查询状态失败');
+                }
+
+                const status = await statusResponse.json();
+
+                // 更新进度
+                progressFill.style.width = status.progress + '%';
+                progressText.textContent = status.message || '处理中...';
+
+                // 检查状态
+                if (status.status === 'completed') {
+                    // 下载文件
+                    progressText.textContent = '下载中...';
+
+                    const downloadResponse = await fetch(`/translate/download/${taskId}`);
+                    if (!downloadResponse.ok) {
+                        throw new Error('下载失败');
+                    }
+
+                    const blob = await downloadResponse.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `translated_${selectedFile.name}`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+
+                    // 显示成功
+                    progressSection.style.display = 'none';
+                    resultSection.style.display = 'block';
+
+                    setTimeout(() => {
+                        translateBtn.disabled = false;
+                        translateBtn.textContent = '重新翻译';
+                    }, 1000);
+                    return;
+
+                } else if (status.status === 'failed') {
+                    throw new Error(status.error || '翻译失败');
+                }
+                // 继续轮询 pending 或 processing 状态
+            } catch (pollError) {
+                // 网络错误时继续重试几次
+                if (pollCount % 5 === 0) {
+                    console.warn('轮询出错，继续重试...', pollError);
+                }
+                if (pollCount > 10 && pollError.message.includes('翻译失败')) {
+                    throw pollError;
+                }
+            }
+        }
+
+        throw new Error('任务超时，请稍后重试');
 
     } catch (error) {
         console.error('Error:', error);
         showMessage('翻译失败: ' + error.message, 'error');
-        
+
         progressSection.style.display = 'none';
         translateBtn.disabled = false;
     }

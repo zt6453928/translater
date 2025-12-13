@@ -12,6 +12,14 @@ import re
 import base64
 from io import BytesIO
 from config import Config
+import threading
+import uuid
+from datetime import datetime
+
+# 任务存储（内存中）
+# 结构: {task_id: {status, progress, message, result_path, error, created_at, updated_at}}
+translation_tasks = {}
+tasks_lock = threading.Lock()
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB max file size
@@ -1480,6 +1488,253 @@ def test():
     """测试路由"""
     return jsonify({'status': 'ok', 'message': 'PDF翻译器运行正常'})
 
+
+# ============== 异步任务 API ==============
+
+def update_task(task_id, **kwargs):
+    """更新任务状态"""
+    with tasks_lock:
+        if task_id in translation_tasks:
+            translation_tasks[task_id].update(kwargs)
+            translation_tasks[task_id]['updated_at'] = datetime.now().isoformat()
+
+
+def run_translation_task(task_id, upload_path, original_filename, mineru_options,
+                         parse_api_token, translate_api_url, translate_api_key,
+                         translate_api_model, translation_mode):
+    """在后台线程中执行翻译任务"""
+    try:
+        # 1. 使用MinerU解析PDF
+        update_task(task_id, status='processing', progress=10, message='正在解析PDF...')
+        print(f"[任务 {task_id}] 正在解析PDF...")
+
+        result = parse_pdf_with_mineru(upload_path, mineru_options, api_token=parse_api_token)
+        mineru_task_id = result.get("task_id")
+
+        if not mineru_task_id:
+            update_task(task_id, status='failed', error='MinerU任务创建失败')
+            return
+
+        print(f"[任务 {task_id}] MinerU任务ID: {mineru_task_id}")
+        update_task(task_id, progress=20, message='等待MinerU处理...')
+
+        # 2. 等待MinerU处理完成
+        task_result = poll_mineru_task(mineru_task_id, api_token=parse_api_token)
+
+        if task_result.get("status") != "success":
+            update_task(task_id, status='failed', error='PDF解析失败')
+            return
+
+        update_task(task_id, progress=40, message='PDF解析完成，正在提取内容...')
+
+        # 3. 获取Markdown内容
+        markdown_content = None
+        if "output" in task_result:
+            output = task_result["output"]
+
+            if "segments" in output and isinstance(output["segments"], list):
+                segments = output["segments"]
+                content_parts = []
+                for segment in segments:
+                    if "content" in segment:
+                        content_parts.append(segment["content"])
+                if content_parts:
+                    markdown_content = "\n\n".join(content_parts)
+            elif "text_result" in output:
+                markdown_content = output["text_result"]
+            elif "file_url" in output:
+                file_url = output["file_url"]
+                response = requests.get(file_url, timeout=30)
+                markdown_content = response.text
+            elif "content" in output:
+                markdown_content = output["content"]
+
+        if not markdown_content:
+            update_task(task_id, status='failed', error='无法获取解析内容')
+            return
+
+        print(f"[任务 {task_id}] Markdown内容长度: {len(markdown_content)}")
+        update_task(task_id, progress=50, message='正在翻译内容...')
+
+        # 4. 翻译
+        print(f"[任务 {task_id}] 翻译模式: {translation_mode}")
+
+        if translation_mode == 'hybrid':
+            translated_content = translate_markdown_hybrid(
+                markdown_content,
+                api_url=translate_api_url,
+                api_key=translate_api_key,
+                model=translate_api_model
+            )
+        elif translation_mode == 'ai':
+            translated_content = translate_markdown_content_with_ai(
+                markdown_content,
+                api_url=translate_api_url,
+                api_key=translate_api_key,
+                model=translate_api_model
+            )
+        elif translation_mode == 'deeplx':
+            translated_content = translate_markdown_content(markdown_content)
+        else:
+            translated_content = translate_markdown_hybrid(
+                markdown_content,
+                api_url=translate_api_url,
+                api_key=translate_api_key,
+                model=translate_api_model
+            )
+
+        print(f"[任务 {task_id}] 翻译完成！")
+        update_task(task_id, progress=80, message='正在生成PDF...')
+
+        # 5. 生成PDF
+        output_filename = f"translated_{os.path.splitext(original_filename)[0]}.pdf"
+        output_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{task_id}_{output_filename}")
+        markdown_to_pdf(translated_content, output_path)
+
+        print(f"[任务 {task_id}] PDF生成成功: {output_path}")
+        update_task(task_id, status='completed', progress=100, message='翻译完成',
+                   result_path=output_path, result_filename=output_filename)
+
+    except Exception as e:
+        print(f"[任务 {task_id}] 错误: {str(e)}")
+        update_task(task_id, status='failed', error=str(e))
+    finally:
+        # 清理上传的原始文件
+        try:
+            if os.path.exists(upload_path):
+                os.remove(upload_path)
+        except:
+            pass
+
+
+@app.route('/translate/submit', methods=['POST'])
+def submit_translation():
+    """提交翻译任务（异步）"""
+    if 'file' not in request.files:
+        return jsonify({'error': '没有上传文件'}), 400
+
+    file = request.files['file']
+
+    if file.filename == '':
+        return jsonify({'error': '文件名为空'}), 400
+
+    if not file.filename.endswith('.pdf'):
+        return jsonify({'error': '只支持PDF文件'}), 400
+
+    try:
+        # 生成任务ID
+        task_id = str(uuid.uuid4())[:8]
+
+        # 保存上传的文件
+        upload_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{task_id}_{file.filename}")
+        file.save(upload_path)
+
+        # 解析配置
+        mineru_options = {
+            "is_ocr": _to_bool(request.form.get('is_ocr'), True),
+            "include_image_base64": _to_bool(request.form.get('include_image_base64'), True),
+            "formula_enable": _to_bool(request.form.get('formula_enable'), True),
+            "table_enable": _to_bool(request.form.get('table_enable'), True),
+            "layout_model": request.form.get('layout_model', 'doclayout_yolo'),
+            "output_format": request.form.get('output_format', 'md'),
+        }
+
+        end_pages_input = request.form.get('end_pages')
+        if end_pages_input and end_pages_input.strip():
+            mineru_options['end_pages'] = end_pages_input.strip()
+
+        language = request.form.get('language')
+        if language:
+            mineru_options['language'] = language.strip()
+
+        # API配置
+        parse_api_token = request.form.get('parse_api_token')
+        translate_api_url = request.form.get('translate_api_url')
+        translate_api_key = request.form.get('translate_api_key')
+        translate_api_model = request.form.get('translate_api_model')
+        translation_mode = request.form.get('translation_mode', 'hybrid')
+
+        # 创建任务记录
+        with tasks_lock:
+            translation_tasks[task_id] = {
+                'status': 'pending',
+                'progress': 0,
+                'message': '任务已创建，等待处理...',
+                'error': None,
+                'result_path': None,
+                'result_filename': None,
+                'original_filename': file.filename,
+                'created_at': datetime.now().isoformat(),
+                'updated_at': datetime.now().isoformat()
+            }
+
+        # 启动后台线程执行翻译
+        thread = threading.Thread(
+            target=run_translation_task,
+            args=(task_id, upload_path, file.filename, mineru_options,
+                  parse_api_token, translate_api_url, translate_api_key,
+                  translate_api_model, translation_mode)
+        )
+        thread.daemon = True
+        thread.start()
+
+        print(f"[任务 {task_id}] 任务已创建，文件: {file.filename}")
+
+        return jsonify({
+            'task_id': task_id,
+            'message': '任务已提交'
+        })
+
+    except Exception as e:
+        print(f"提交任务错误: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/translate/status/<task_id>')
+def get_translation_status(task_id):
+    """查询翻译任务状态"""
+    with tasks_lock:
+        task = translation_tasks.get(task_id)
+
+    if not task:
+        return jsonify({'error': '任务不存在'}), 404
+
+    return jsonify({
+        'task_id': task_id,
+        'status': task['status'],
+        'progress': task['progress'],
+        'message': task['message'],
+        'error': task['error'],
+        'created_at': task['created_at'],
+        'updated_at': task['updated_at']
+    })
+
+
+@app.route('/translate/download/<task_id>')
+def download_translation(task_id):
+    """下载翻译结果"""
+    with tasks_lock:
+        task = translation_tasks.get(task_id)
+
+    if not task:
+        return jsonify({'error': '任务不存在'}), 404
+
+    if task['status'] != 'completed':
+        return jsonify({'error': '任务尚未完成'}), 400
+
+    result_path = task.get('result_path')
+    if not result_path or not os.path.exists(result_path):
+        return jsonify({'error': '结果文件不存在'}), 404
+
+    return send_file(
+        result_path,
+        as_attachment=True,
+        download_name=task.get('result_filename', 'translated.pdf'),
+        mimetype='application/pdf'
+    )
+
+
+# ============== 原有同步 API（保留兼容） ==============
 
 @app.route('/translate', methods=['POST'])
 def translate_pdf():
